@@ -27,8 +27,11 @@ parser.add_argument("--no-output-ratings", dest='output_ratings',
                     action='store_false')
 parser.add_argument("--separate-maps", default=False,
                     action='store_true')
+parser.add_argument("--ignore-dropped", default=False,
+                    action='store_true')
 options = parser.parse_args()
 
+# Rebuild the game as a unit from the pairwise matchups.
 class Game:
     def __init__(self, r):
         self.id = r['id']
@@ -37,7 +40,7 @@ class Game:
 
     def add(self, result, players, factions):
         key = result['faction']
-        if result['dropped']:
+        if result['dropped'] and options.ignore_dropped:
             return
         if not self.results.get(key):
             self.results[key] = result
