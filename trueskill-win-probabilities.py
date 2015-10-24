@@ -6,7 +6,7 @@ import json
 import os
 import sys
 
-from trueskill import Rating, rate, TrueSkill, backends
+import trueskill
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--faction-weight", default=1.0, type=float)
@@ -25,7 +25,8 @@ parser.add_argument("--output-ratings", dest='output_ratings',
                     action='store_true')
 parser.add_argument("--no-output-ratings", dest='output_ratings',
                     action='store_false')
-parser.add_argument("--separate-maps", default=False, type=bool)
+parser.add_argument("--separate-maps", default=False,
+                    action='store_true')
 options = parser.parse_args()
 
 class Game:
@@ -50,9 +51,9 @@ class Ratings:
         self.players = data['players']
         self.games = {}
         for f in self.factions.values():
-            f['rating'] = Rating()
+            f['rating'] = trueskill.Rating()
         for p in self.players.values():
-            p['rating'] = Rating()
+            p['rating'] = trueskill.Rating()
         for r in self.results:
             game = self.games.get(r['id'])
             if not game:
@@ -82,7 +83,7 @@ class Ratings:
                 weights.append((1, options.faction_weight))
                 teams.append((res['player_ref']['rating'],
                               res['faction_ref']['rating']))
-            new = rate(teams, ranks, weights)
+            new = trueskill.rate(teams, ranks, weights)
             i = 0
             for res in results:
                 (res['player_ref']['rating'],
@@ -120,7 +121,8 @@ def rewrite(json):
         json['factions'][res['b']['faction']] = {}
     return json
 
-env = TrueSkill(mu=1000, sigma=350, beta=options.beta, draw_probability=0.0, backend=None)
+backend = None
+env = trueskill.TrueSkill(mu=1000, sigma=350, beta=options.beta, draw_probability=0.0, backend=backend)
 env.make_as_global()
 
 def get_ratings():
@@ -131,17 +133,27 @@ def get_ratings():
     return ratings
 
 def print_win_probabilities(ratings, matchups):
-    (cdf, pdf, ppf) = trueskill.backends.choose_backend(None)
+    (cdf, pdf, ppf) = trueskill.backends.choose_backend(backend)
 
     # Given the ratings for player/faction combinations A and B, what's
     # the probability that A wins?
     def win_probability(a, b):
-        deltaMu = sum([x.mu for x in a]) - sum([x.mu for x in b])
+        deltaMu = sum([x.mu * x.weight for x in a]) - sum([x.mu * x.weight for x in b])
+        # Should we do something with faction weights here? I think in
+        # thery we might want to use it to adjust the result after squaring,
+        # and likewise adjust playercount to use fractional players if
+        # necessary. In practice it shouldn't really matter, since the
+        # faction variances are tiny.
         sumSigma = sum([x.sigma ** 2 for x in a]) + sum([x.sigma ** 2 for x in b])
-        playerCount = len(a) + len(b)
+        playerCount = len(filter(lambda x: x.weight != 0, a)) + len(filter(lambda x: x.weight != 0, b))
         denominator = math.sqrt(playerCount * (options.beta ** 2) + sumSigma)
         return cdf(deltaMu / denominator)
 
+    for f in ratings.factions.values():
+        f['rating'].weight = options.faction_weight
+    for p in ratings.players.values():
+        p['rating'].weight = 1.0
+    
     for res in matchups['results']:
         a = res['a']
         b = res['b']
