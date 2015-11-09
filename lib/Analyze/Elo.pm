@@ -137,8 +137,8 @@ sub iterate_results {
         $p1->{faction_breakdown}{$res->{a}{faction}}{score} += $p1_delta;
         $p2->{faction_breakdown}{$res->{b}{faction}}{score} += $p2_delta;
 
-        push @rating_changes, [$f1, $pot * ($ap1 - $ep1) * $fw];
-        push @rating_changes, [$f1, $pot * ($ap2 - $ep2) * $fw];
+        push @rating_changes, [$f1, $pot * $p1_delta * $fw];
+        push @rating_changes, [$f2, $pot * $p2_delta * $fw];
 
         $p1->{faction_plays}{$res->{a}{faction}}{$res->{id}} = 1;
         $p2->{faction_plays}{$res->{b}{faction}}{$res->{id}} = 1;
