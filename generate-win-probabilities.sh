@@ -37,6 +37,22 @@ function trueskill {
     fi
 }
 
+function whr {
+    id=$1;
+    flags=$2;
+    echo "whr $id"
+
+    F=$OUTDIR/whr-$id.csv
+    
+    if [ ! -f $F ]; then   
+        rm -f $F
+        ruby -Iwhole_history_rating/lib whr-win-probabilities.rb $flags > $F.tmp
+        mv $F.tmp $F
+    else
+        echo "  already done"
+    fi
+}
+
 elo "none" "--iter=1 --fw=0 --pot-size=0 --min-games=1";
 elo "original-k8" "--iter=1 --fw=0 --pot-size=8 --min-games=1";
 elo "original-k16" "--iter=1 --fw=0 --pot-size=16 --min-games=1";
@@ -85,3 +101,11 @@ trueskill "separate-maps-fw-0.5" "--separate-maps --faction-weight=0.5"
 trueskill "separate-maps-fw-1.5" "--separate-maps --faction-weight=1.5"
 
 
+whr "iters-1" "1"
+whr "iters-2" "2"
+whr "iters-5" "5"
+whr "iters-10" "10"
+whr "iters-20" "20"
+whr "iters-50" "50"
+# whr "iters-100" "100"
+# whr "iters-200" "200"
