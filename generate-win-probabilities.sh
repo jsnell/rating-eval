@@ -88,6 +88,9 @@ elo "separate-maps-k16-fw-2" "--separate-maps --pot-size=16 --fw=2";
 
 elo "separate-maps-k16-batch" "--separate-maps --pot-size=16 --batch-submatches";
 
+elo "separate-maps-k16-pfw0" "--separate-maps --pot-size=16 --pfw=0";
+elo "separate-maps-k16-pfw1" "--separate-maps --pot-size=16 --pfw=1";
+elo "separate-maps-k16-pfw0.5" "--separate-maps --pot-size=16 --pfw=0.5";
 
 trueskill "default" ""
 trueskill "no-factions" "--faction-weight=0"

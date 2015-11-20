@@ -13,6 +13,7 @@ use List::Util qw(min max sum);
 
 my $iters = 3;
 my $separate_maps = 0;
+my $pfw = 0;
 my $fw = 1;
 my $pw = 1;
 my $ps = 16;
@@ -24,6 +25,7 @@ my $hack = 400;
 if (!GetOptions("iters=s" => \$iters,
                 "pot-size=s" => \$ps,
                 "min-games=s" => \$min_games,
+                "pfw=s" => \$pfw,
                 "fw=s" => \$fw,
                 "pw=s" => \$pw,
                 "hack=s" => \$hack,
@@ -35,6 +37,7 @@ if (!GetOptions("iters=s" => \$iters,
 
 my $elo_settings = {
     iters => $iters,
+    player_faction_weigth => $pfw,
     faction_weigth => $fw,
     player_weigth => $pw,
     pot_size => $ps,
@@ -107,6 +110,9 @@ sub print_win_probabilities {
         $r1 += $factions->{$f1}{score} * $fw;
         $r2 += $factions->{$f2}{score} * $fw;
 
+        $r1 += $pfw * ($players->{$u1}{per_faction}{$f1}{score} // 0);
+        $r2 += $pfw * ($players->{$u2}{per_faction}{$f2}{score} // 0);
+        
         my $rdiff = $r1 - $r2;
 
         my $expect = 1 / (1 + 10 ** ( -$rdiff / $hack));

@@ -26,7 +26,9 @@ my %default_settings = (
     # Only return the results for players who have played at least in this
     # many games.
     min_output_games => 5,
+    player_weigth => 1,
     faction_weigth => 1,
+    player_faction_weigth => 0,
     # If true, players who drop out of a game are completely ignored in
     # the rating calculation (rather than being ranked based on the VP
     # they finished with). Only for running prediction experiments, must
@@ -81,13 +83,19 @@ sub iterate_results {
 
         my $p1 = $players->{$res->{a}{username}};
         my $p2 = $players->{$res->{b}{username}};
+        my $pw = $settings->{player_weigth};
         my $fw = $settings->{faction_weigth};
+        my $pfw = $settings->{player_faction_weigth};
 
+        my $pf1 = ($p1->{per_faction}{$res->{a}{faction}}{score} //= 0);
+        my $pf2 = ($p2->{per_faction}{$res->{b}{faction}}{score} //= 0);
+        
         if ($res->{a}{dropped} or $res->{b}{dropped}) {
             if ($settings->{ignore_dropped}) {
                 next;
             } else {
                 $fw = 0;
+                $pfw = 0;
             }
         }
 
@@ -96,9 +104,9 @@ sub iterate_results {
 
         my $q1 = $f1->{score} // 1000;
         my $q2 = $f2->{score} // 1000;
-        
-        my $p1_score = $p1->{score} + $q1 * $fw;
-        my $p2_score = $p2->{score} + $q2 * $fw;
+
+        my $p1_score = $p1->{score} * $pw + $pf1 * $pfw + $q1 * $fw;
+        my $p2_score = $p2->{score} * $pw + $pf2 * $pfw + $q2 * $fw;
         my $diff = $p1_score - $p2_score;
 
         my $ep1 = 1 / (1 + 10**(-$diff / 400));
@@ -127,18 +135,23 @@ sub iterate_results {
         # new players will have a "shadow rating" computed for them,
         # but will not affect the ratings of opponents or factions.
         if ($p2->{games} >= $settings->{min_games} or !$count) {
-            push @rating_changes, [$p1, $p1_delta];
+            push @rating_changes, [$p1, $p1_delta * $pw];
         }
         if ($p1->{games} >= $settings->{min_games} or !$count) {
-            push @rating_changes, [$p2, $p2_delta];
+            push @rating_changes, [$p2, $p2_delta * $pw];
         }
         next if $count != 2;
 
+        push @rating_changes, [$f1, $p1_delta * $fw];
+        push @rating_changes, [$f2, $p2_delta * $fw];
+
+        push @rating_changes, [$p1->{per_faction}{$res->{a}{faction}},
+                               $p1_delta * ($pfw)];
+        push @rating_changes, [$p2->{per_faction}{$res->{b}{faction}},
+                               $p2_delta * ($pfw)];
+
         $p1->{faction_breakdown}{$res->{a}{faction}}{score} += $p1_delta;
         $p2->{faction_breakdown}{$res->{b}{faction}}{score} += $p2_delta;
-
-        push @rating_changes, [$f1, $pot * $p1_delta * $fw];
-        push @rating_changes, [$f2, $pot * $p2_delta * $fw];
 
         $p1->{faction_plays}{$res->{a}{faction}}{$res->{id}} = 1;
         $p2->{faction_plays}{$res->{b}{faction}}{$res->{id}} = 1;
